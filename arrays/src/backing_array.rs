@@ -17,6 +17,10 @@ impl<T : Default + Clone> BackingArray<T> {
     pub fn len(&self) -> usize {
         self.arr.len()
     }
+
+    pub fn resize(&mut self, new_len : usize) {
+        self.arr.resize(new_len, Default::default());
+    }
 }
 
 impl<T : Default + Clone> Index<usize> for BackingArray<T> {
