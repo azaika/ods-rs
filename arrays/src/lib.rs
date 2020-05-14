@@ -1,5 +1,8 @@
-pub mod backing_array;
+mod backing_array;
+mod array_stack;
+
 pub use backing_array::*;
+pub use array_stack::*;
 
 #[cfg(test)]
 mod tests {
