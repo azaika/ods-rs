@@ -1,4 +1,5 @@
 use crate::backing_array::*;
+use std::cmp;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArrayStack<T : Default + Clone> {
@@ -27,14 +28,59 @@ impl<T: Default + Clone> ArrayStack<T> {
         if self.check_idx(i) { Some(&self.arr[i]) } else { None }
     }
 
-    pub fn set(&mut self, i : usize, x : T) -> Option<T> {
-        if !self.check_idx(i) {
+    pub fn set(&mut self, idx : usize, x : T) -> Option<T> {
+        if !self.check_idx(idx) {
             return None;
         }
 
-        let old = self.arr[i].clone();
-        self.arr[i] = x;
+        let old = self.arr[idx].clone();
+        self.arr[idx] = x;
 
         Some(old)
+    }
+
+    fn resize(&mut self) {
+        let mut new_arr = BackingArray::with_size(cmp::max(1, 2 * self.n));
+
+        for i in 0..self.n {
+            new_arr[i] = self.arr[i].clone();
+        }
+
+        self.arr = new_arr;
+    }
+
+    pub fn add(&mut self, idx : usize, x : T) {
+        if !self.check_idx(idx) {
+            return;
+        }
+
+        if self.n == self.arr.len() {
+            self.resize();
+        }
+
+        for i in (idx..self.n).rev() {
+            self.arr[i + 1] = self.arr[i].clone();
+        }
+
+        self.arr[idx] = x;
+        self.n += 1;
+    }
+
+    pub fn remove(&mut self, idx : usize) -> Option<T> {
+        if !self.check_idx(idx) {
+            return None;
+        }
+
+        let x = self.arr[idx].clone();
+        for i in idx..(self.n-1) {
+            self.arr[i + 1] = self.arr[i].clone();
+        }
+
+        self.n -= 1;
+        if self.arr.len() >= 3 * self.n {
+            self.resize()
+        }
+        
+        Some(x)
     }
 }
