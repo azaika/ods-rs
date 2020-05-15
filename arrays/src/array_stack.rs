@@ -27,6 +27,10 @@ impl<T: Default + Clone> ArrayStack<T> {
     pub fn get(&self, i : usize) -> Option<&T> {
         if self.check_idx(i) { Some(&self.arr[i]) } else { None }
     }
+    
+    pub fn get_mut(&mut self, i : usize) -> Option<&mut T> {
+        if self.check_idx(i) { Some(&mut self.arr[i]) } else { None }
+    }
 
     pub fn set(&mut self, idx : usize, x : T) -> Option<T> {
         if !self.check_idx(idx) {
