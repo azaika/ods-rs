@@ -18,7 +18,7 @@ impl<T: Default + Clone> ArrayQueue<T> {
     }
 
     pub fn size(&self) -> usize {
-        self.arr.len()
+        self.n
     }
 
     fn resize(&mut self) {

@@ -17,7 +17,7 @@ impl<T: Default + Clone> ArrayStack<T> {
     }
 
     pub fn size(&self) -> usize {
-        self.arr.len()
+        self.n
     }
 
     fn check_idx(&self, i : usize) -> bool {
