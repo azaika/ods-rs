@@ -54,7 +54,7 @@ impl<T: Default + Clone> ArrayStack<T> {
     }
 
     pub fn add(&mut self, idx : usize, x : T) {
-        if !self.check_idx(idx) {
+        if idx > self.size() {
             return;
         }
 

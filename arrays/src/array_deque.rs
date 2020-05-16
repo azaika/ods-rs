@@ -60,6 +60,10 @@ impl<T: Default + Clone> ArrayDeque<T> {
     }
 
     pub fn add(&mut self, idx : usize, x : T) {
+        if idx > self.size() {
+            return;
+        }
+
         if self.n == self.arr.len() {
             self.resize();
         }
