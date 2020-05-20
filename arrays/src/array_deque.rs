@@ -17,6 +17,10 @@ impl<T: Default + Clone> ArrayDeque<T> {
         Self { arr : BackingArray::with_size(n), n : n, head : 0 }
     }
 
+    pub fn with_capacity(n : usize) -> Self {
+        Self { arr : BackingArray::with_size(n), n : 0, head : 0 }
+    }
+
     pub fn size(&self) -> usize {
         self.n
     }
@@ -87,6 +91,10 @@ impl<T: Default + Clone> ArrayDeque<T> {
         self.arr[(self.head + idx) % len] = x;
 
         self.n += 1;
+    }
+
+    pub fn push_back(&mut self, x : T) {
+        self.add(self.size(), x)
     }
 
     pub fn remove(&mut self, idx : usize) -> Option<T> {
