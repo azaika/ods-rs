@@ -29,12 +29,36 @@ impl<T : Default + Clone> SEList<T> {
     pub fn new() -> Self {
         Self { dummy : Box::new(Node::new()), n : 0, block_size : 4 }
     }
+    
+    fn head(&self) -> & Node<T> {
+        if self.dummy.as_ref().prev == ptr::null_mut() {
+            panic!("SEList::head_mut() was called for empty list.");
+        }
+
+        self.dummy.as_ref().next.as_ref().unwrap().as_ref()
+    }
+    fn head_mut(&mut self) -> &mut Node<T> {
+        if self.dummy.as_ref().prev == ptr::null_mut() {
+            panic!("SEList::head_mut() was called for empty list.");
+        }
+
+        self.dummy.as_mut().next.as_mut().unwrap().as_mut()
+    }
+    fn last_mut(&mut self) -> &mut Node<T> {
+        if self.dummy.as_ref().prev == ptr::null_mut() {
+            panic!("SEList::last_mut() was called for empty list.");
+        }
+
+        unsafe {
+            &mut *self.dummy.as_mut().prev
+        }
+    }
 
     // idx must satisfy idx < n
     fn get_location(&self, idx : usize) -> (*const Node<T>, usize) {
         if idx < self.n/2 {
             let mut rem = idx;
-            let mut ptr : *const _ = self.dummy.as_ref().next.as_ref().unwrap().as_ref();
+            let mut ptr : *const _ = self.head();
 
             unsafe {
                 while rem >= (*ptr).block.size() {
@@ -42,27 +66,27 @@ impl<T : Default + Clone> SEList<T> {
                     ptr = (*ptr).next.as_ref().unwrap().as_ref();
                 }
             }
-
+            
             (ptr, rem)
         }
         else {
+            let mut ptr : *const _ = self.dummy.as_ref();
             let mut cur = self.n;
-            let mut ptr : *const _ = self.dummy.prev;
 
             unsafe {
                 while cur > idx {
-                    cur -= (*ptr).block.size();
                     ptr = (*ptr).prev;
+                    cur -= (*ptr).block.size();
                 }
             }
-            
+
             (ptr, idx - cur)
         }
     }
     fn get_location_mut(&mut self, idx : usize) -> (*mut Node<T>, usize) {
         if idx < self.n/2 {
             let mut rem = idx;
-            let mut ptr : *mut _ = self.dummy.as_mut().next.as_mut().unwrap().as_mut();
+            let mut ptr : *mut _ = self.head_mut();
 
             unsafe {
                 while rem >= (*ptr).block.size() {
@@ -74,16 +98,16 @@ impl<T : Default + Clone> SEList<T> {
             (ptr, rem)
         }
         else {
+            let mut ptr : *mut _ = self.dummy.as_mut();
             let mut cur = self.n;
-            let mut ptr : *mut _ = self.dummy.prev;
 
             unsafe {
                 while cur > idx {
-                    cur -= (*ptr).block.size();
                     ptr = (*ptr).prev;
+                    cur -= (*ptr).block.size();
                 }
             }
-            
+
             (ptr, idx - cur)
         }
     }
@@ -133,8 +157,9 @@ impl<T : Default + Clone> SEList<T> {
 
     fn insert_node(pos : &mut Box<Node<T>>, block_size : usize) {
         let mut new_node = Node::with_capacity(block_size);
-
+        new_node.prev = pos.as_mut();
         new_node.next = pos.as_mut().next.take();
+
         pos.as_mut().next = Some(Box::new(new_node));
 
         let new_node : *mut _ = pos.as_mut().next.as_mut().unwrap();
@@ -151,16 +176,6 @@ impl<T : Default + Clone> SEList<T> {
         self.dummy.prev = self.last_mut().next.as_mut().unwrap().as_mut();
     }
 
-    fn last_mut(&mut self) -> &mut Node<T> {
-        if self.n == 0 {
-            panic!("SEList::last_mut() was called for empty list.");
-        }
-
-        unsafe {
-            &mut *self.dummy.as_mut().prev
-        }
-    }
-
     pub fn push_back(&mut self, x : T) {
         if self.n == 0 {
             Self::insert_node(&mut self.dummy, self.block_size);
@@ -171,6 +186,7 @@ impl<T : Default + Clone> SEList<T> {
         }
 
         self.last_mut().block.push_back(x);
+        self.n += 1;
     }
 
     unsafe fn spread(&mut self, node : *mut Node<T>) {
@@ -180,6 +196,9 @@ impl<T : Default + Clone> SEList<T> {
         }
 
         Self::insert_node(&mut (*(*cur).prev).next.as_mut().unwrap(), self.block_size);
+        if self.dummy.as_ref().prev == cur {
+            self.dummy.as_mut().prev = (*cur).next.as_mut().unwrap().as_mut();
+        }
 
         cur = (*cur).next.as_mut().unwrap().as_mut();
 
@@ -272,6 +291,9 @@ impl<T : Default + Clone> SEList<T> {
             cur = next;
         }
         
+        if cur == self.dummy.as_mut().prev {
+            self.dummy.as_mut().prev = (*cur).prev;
+        }
         Self::remove_node(cur)
     }
 
@@ -316,9 +338,12 @@ impl<T : Default + Clone> SEList<T> {
                     let cur = &mut *node_ptr;
                     cur.block.push_back(cur.next.as_mut().unwrap().block.pop_front().unwrap());
     
-                    node_ptr = cur.prev;
+                    node_ptr = cur.next.as_mut().unwrap().as_mut();
                 }
                 if (*dist_node).block.size() == 0 {
+                    if dist_node == self.dummy.as_mut().prev {
+                        self.dummy.as_mut().prev = (*dist_node).prev;
+                    }
                     Self::remove_node(dist_node);
                 }
             }
@@ -335,5 +360,59 @@ impl<T : Default + Clone> SEList<T> {
 
     pub fn size(&self) -> usize {
         self.n
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn se_list_works() {
+        let mut list = SEList::<i32>::new();
+
+        list.push_back(1);
+        list.push_back(2);
+        list.push_back(3);
+        list.push_back(4);
+        
+        assert_eq!(list.get(0), Some(&1));
+        assert_eq!(list.get(1), Some(&2));
+        assert_eq!(list.get(2), Some(&3));
+        assert_eq!(list.get(3), Some(&4));
+
+        list.add(0, -1);
+        list.add(0, -2);
+        assert_eq!(list.get(0), Some(&-2));
+        assert_eq!(list.get(1), Some(&-1));
+        assert_eq!(list.get(2), Some(&1));
+
+        list.add(2, 0);
+        assert_eq!(list.get(1), Some(&-1));
+        assert_eq!(list.get(2), Some(&0));
+        assert_eq!(list.get(3), Some(&1));
+
+        assert_eq!(list.remove(2), Some(0));
+        assert_eq!(list.get(0), Some(&-2));
+        assert_eq!(list.get(1), Some(&-1));
+        assert_eq!(list.get(2), Some(&1));
+
+        assert_eq!(list.remove(0), Some(-2));
+        assert_eq!(list.remove(0), Some(-1));
+        assert_eq!(list.remove(0), Some(1));
+        assert_eq!(list.remove(0), Some(2));
+        assert_eq!(list.remove(0), Some(3));
+        assert_eq!(list.remove(0), Some(4));
+        assert_eq!(list.remove(0), None);
+
+        for i in 0i32..36 {
+            list.add(0, 35 - i);
+        }
+        for i in 0i32..36 {
+            assert_eq!(list.get(i as usize), Some(&i));
+        }
+        for i in 0..36 {
+            assert_eq!(list.remove(0), Some(i));
+        }
     }
 }

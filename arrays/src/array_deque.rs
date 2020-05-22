@@ -175,5 +175,8 @@ mod tests {
         assert_eq!(deque.remove(2), Some(0));
         assert_eq!(deque.get(1), Some(&-1));
         assert_eq!(deque.get(2), Some(&1));
+
+        assert_eq!(deque.remove(4), Some(3));
+        assert_eq!(deque.get(4), Some(&4));
     }
 }
