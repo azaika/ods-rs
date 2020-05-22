@@ -97,8 +97,12 @@ impl<T: Default + Clone> ArrayDeque<T> {
         self.add(self.size(), x)
     }
 
+    pub fn push_front(&mut self, x : T) {
+        self.add(0, x)
+    }
+
     pub fn remove(&mut self, idx : usize) -> Option<T> {
-        if self.n == 0 {
+        if idx >= self.size() {
             return None;
         }
 
@@ -127,5 +131,18 @@ impl<T: Default + Clone> ArrayDeque<T> {
         }
         
         Some(x)
+    }
+
+    pub fn pop_back(&mut self) -> Option<T> {
+        if self.size() == 0 {
+            None
+        }
+        else {
+            self.remove(self.size() - 1)
+        }
+    }
+
+    pub fn pop_front(&mut self) -> Option<T> {
+        self.remove(0)
     }
 }
