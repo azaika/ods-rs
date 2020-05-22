@@ -74,12 +74,10 @@ impl<T: Default + Clone> ArrayDeque<T> {
 
         let len = self.arr.len();
         if idx < self.n/2 {
-            self.head = if self.head == 0 {self.arr.len() - 1 } else { self.head - 1 };
+            self.head = if self.head == 0 { len - 1 } else { self.head - 1 };
             
-            if idx != 0 {
-                for i in 0..(idx-1) {
-                    self.arr[(self.head + i) % len] = self.arr[(self.head + i + 1) % len].clone();
-                }
+            for i in 0..idx {
+                self.arr[(self.head + i) % len] = self.arr[(self.head + i + 1) % len].clone();
             }
         }
         else {
@@ -110,10 +108,8 @@ impl<T: Default + Clone> ArrayDeque<T> {
         let x = self.arr[(self.head + idx) % len].clone();
 
         if idx < self.n/2 {
-            if idx != 0 {
-                for i in (0..(idx-1)).rev() {
-                    self.arr[(self.head + i + 1) % len] = self.arr[(self.head + i) % len].clone();
-                }
+            for i in (0..idx).rev() {
+                self.arr[(self.head + i + 1) % len] = self.arr[(self.head + i) % len].clone();
             }
 
             self.head = (self.head + 1) % len;
@@ -144,5 +140,40 @@ impl<T: Default + Clone> ArrayDeque<T> {
 
     pub fn pop_front(&mut self) -> Option<T> {
         self.remove(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn array_deque_works() {
+        let mut deque = ArrayDeque::<i32>::new();
+
+        deque.push_back(1);
+        deque.push_back(2);
+        deque.push_back(3);
+        deque.push_back(4);
+        
+        assert_eq!(deque.get(0), Some(&1));
+        assert_eq!(deque.get(1), Some(&2));
+        assert_eq!(deque.get(2), Some(&3));
+        assert_eq!(deque.get(3), Some(&4));
+
+        deque.push_front(-1);
+        deque.push_front(-2);
+        assert_eq!(deque.get(0), Some(&-2));
+        assert_eq!(deque.get(1), Some(&-1));
+        assert_eq!(deque.get(2), Some(&1));
+
+        deque.add(2, 0);
+        assert_eq!(deque.get(1), Some(&-1));
+        assert_eq!(deque.get(2), Some(&0));
+        assert_eq!(deque.get(3), Some(&1));
+
+        assert_eq!(deque.remove(2), Some(0));
+        assert_eq!(deque.get(1), Some(&-1));
+        assert_eq!(deque.get(2), Some(&1));
     }
 }
