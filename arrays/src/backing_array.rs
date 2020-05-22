@@ -37,7 +37,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn backing_array_works() {
         let a1 = BackingArray::<i32>::new();
 
         assert_eq!(a1.len(), 0);
