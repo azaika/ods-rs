@@ -14,7 +14,7 @@ pub struct BSTree<K : Ord, V> {
     n : usize
 }
 
-impl<K : Ord + std::fmt::Debug, V : std::fmt::Debug> BSTree<K, V> {
+impl<K : Ord, V> BSTree<K, V> {
     pub fn new() -> Self {
         Self { root : None, n : 0 }
     }
