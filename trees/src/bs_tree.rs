@@ -14,9 +14,19 @@ pub struct BSTree<K : Ord, V> {
     n : usize
 }
 
-impl<K : Ord, V> BSTree<K, V> {
+impl<K : Ord + std::fmt::Debug, V : std::fmt::Debug> BSTree<K, V> {
     pub fn new() -> Self {
-        BSTree { root : None, n : 0 }
+        Self { root : None, n : 0 }
+    }
+
+    pub fn from_vec(src : Vec<(K, V)>) -> Self {
+        let mut tree = Self::new();
+
+        for (key, value) in src {
+            tree.insert(key, value);
+        }
+
+        tree
     }
 
     pub fn is_empty(&self) -> bool {
@@ -32,10 +42,10 @@ impl<K : Ord, V> BSTree<K, V> {
 
         loop {
             let next;
-            if *key > node.key {
+            if *key < node.key {
                 next = &node.left;
             }
-            else if *key < node.key {
+            else if *key > node.key {
                 next = &node.right;
             }
             else {
@@ -113,6 +123,8 @@ impl<K : Ord, V> BSTree<K, V> {
     pub fn insert(&mut self, key : K, value : V) -> bool {
         if self.is_empty() {
             self.root = Some(Box::new(Node{ key : key, value : value, left : None, right : None, parent : std::ptr::null_mut() }));
+            self.n += 1;
+
             return true;
         }
 
@@ -123,7 +135,7 @@ impl<K : Ord, V> BSTree<K, V> {
 
         let node_ptr : *mut Node<K, V> = node.as_mut();
         let next;
-        if node.key < key {
+        if key < node.key {
             next = &mut node.left;
         }
         else {
@@ -132,6 +144,8 @@ impl<K : Ord, V> BSTree<K, V> {
 
         *next = Some(Box::new(Node{ key : key, value : value, left : None, right : None, parent : node_ptr }));
         
+        self.n += 1;
+
         true
     }
 
@@ -147,7 +161,7 @@ impl<K : Ord, V> BSTree<K, V> {
             unsafe {
                 parent = &mut *node.parent;
             }
-            if node.key < parent.key {
+            if parent.left.as_ref().map(|a| a.key == node.key).unwrap_or(false) {
                 parent.left = child;
             }
             else {
@@ -191,6 +205,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
+    fn bs_tree_works() {
+        let mut bst : BSTree<i32, i32> = BSTree::new();
+        
+        bst.insert(0, 0);
+        bst.insert(5, 5);
+        bst.insert(-2, -2);
+
+        assert_eq!(bst.get(&0), Some(&0));
+        assert_eq!(bst.get(&5), Some(&5));
+        assert_eq!(bst.get(&-2), Some(&-2));
+
+        assert_eq!(bst.get(&3), None);
+
+        bst.remove(&0);
+
+        assert_eq!(bst.get(&0), None);
+        assert_eq!(bst.get(&5), Some(&5));
+        assert_eq!(bst.get(&-2), Some(&-2));
+
+        bst = BSTree::from_vec(vec![(1, 1), (10, 10), (8, 8), (9, 9), (7, 7), (0, 0)]);
+
+        bst.remove(&5);
+        bst.remove(&-2);
+
+        assert_eq!(bst.get(&7), Some(&7));
+        assert_eq!(bst.get(&0), Some(&0));
     }
 }
