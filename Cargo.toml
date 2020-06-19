@@ -3,5 +3,6 @@
 members = [
     "runner",
     "arrays",
-    "lists"
+    "lists",
+    "heaps"
 ]

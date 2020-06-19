@@ -265,13 +265,12 @@ impl<K : Ord, V> ScapegoatTree<K, V> {
         self.n -= 1;
 
         if self.q > 2*self.n {
-            if self.is_empty() {
-                self.q = self.n;
-            }
-            else {
+            if !self.is_empty() {
                 let r = self.root.take();
                 self.rebuild(r, false);
             }
+
+            self.q = self.n;
         }
 
         true
@@ -412,6 +411,8 @@ mod tests {
         assert_eq!(bst.get(&7), Some(&7));
         assert_eq!(bst.get(&0), Some(&0));
 
+        bst = ScapegoatTree::new();
+
         for i in 0..64 {
             bst.insert(i, i);
         }
@@ -419,5 +420,18 @@ mod tests {
         for i in 0..64 {
             assert_eq!(bst.get(&i), Some(&i));
         }
+
+        println!("{:?}", bst);
+
+        // for i in 0..1 {
+        //     bst.remove(&i);
+        // }
+
+        // for i in 0..32 {
+        //     assert_eq!(bst.get(&i), None);
+        // }
+        // for i in 32..64 {
+        //     assert_eq!(bst.get(&i), Some(&i));
+        // }
     }
 }
