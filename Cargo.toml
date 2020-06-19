@@ -4,5 +4,6 @@ members = [
     "runner",
     "arrays",
     "lists",
-    "heaps"
+    "heaps",
+    "sorts"
 ]

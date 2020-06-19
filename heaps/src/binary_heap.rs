@@ -21,6 +21,10 @@ impl<T : Ord> BinaryHeap<T> {
         return heap;
     }
 
+    pub fn into_vec(self) -> Vec<T> {
+        self.src
+    }
+
     fn left(idx : usize) -> usize {
         (idx << 1) + 1
     }
@@ -31,7 +35,7 @@ impl<T : Ord> BinaryHeap<T> {
         (idx - 1) >> 1
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.n == 0
     }
 
@@ -136,7 +140,7 @@ mod tests {
         assert_eq!(heap.pop(), None);
 
         heap = BinaryHeap::from_vec(vec![5, 3, 4, 9, -1, 0]);
-        
+
         assert_eq!(heap.pop(), Some(-1));
         assert_eq!(heap.pop(), Some(0));
         assert_eq!(heap.pop(), Some(3));
