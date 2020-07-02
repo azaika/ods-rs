@@ -38,11 +38,11 @@ pub struct BinaryTrie<T : Unsigned + PrimInt> {
     n : usize
 }
 
-impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
+impl<T : Unsigned + PrimInt + std::fmt::Debug> BinaryTrie<T> {
     const BITWISE: usize = std::mem::size_of::<T>() * 8;
 
     pub fn new() -> Self {
-        let mut ret = Self {
+        Self {
             root : Node::Inner(InnerNode {
                 child : [None, None],
                 parent : ptr::null_mut(),
@@ -55,16 +55,10 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
                 parent : ptr::null_mut()
             },
             n : 0
-        };
-
-        let ptr : *mut LeafNode<T> = &mut ret.dummy;
-        ret.dummy.prev = ptr;
-        ret.dummy.next = ptr;
-
-        ret
+        }
     }
 
-    // returns (node_ptr, depth, is_right)
+    // returns (node_ptr, depth, is_left)
     fn find_node(&self, x : T) -> (&Node<T>, usize, bool) {
         let mut c : bool = false;
 
@@ -74,7 +68,7 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
             c = ((x >> (Self::BITWISE - i - 1)) & T::one()).is_zero();
 
             if let Node::Inner(inner) = u {
-                if let Some(ref ch) = inner.child[if c {1} else {0}] {
+                if let Some(ref ch) = inner.child[if c {0} else {1}] {
                     u = ch.as_ref();
                 }
                 else {
@@ -86,7 +80,7 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
         (u, Self::BITWISE, c)
     }
 
-    // returns (node_ptr, depth, is_right)
+    // returns (node_ptr, depth, is_left)
     fn find_node_mut(&mut self, x : T) -> (&mut Node<T>, usize, bool) {
         let mut c : bool = false;
 
@@ -96,15 +90,12 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
         for i in 0..Self::BITWISE {
             c = ((x >> (Self::BITWISE - i - 1)) & T::one()).is_zero();
 
-            ptr = u;
-
-            if let Node::Inner(inner) = u {
-                if let Some(ref mut ch) = inner.child[if c {1} else {0}] {
-                    u = ch.as_mut();
-                }
-                else {
-                    return unsafe {(&mut *ptr, i, c)};
-                }
+            if let Some(ref mut ch) = u.as_inner().child[if c {0} else {1}] {
+                u = ch.as_mut();
+                ptr = u;
+            }
+            else {
+                return unsafe {(&mut *ptr, i, c)};
             }
         }
 
@@ -118,12 +109,12 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
     }
 
     pub fn lower_bound(&self, x : T) -> Option<T> {
-        let (node, _, is_right) = self.find_node(x);
+        let (node, _, is_left) = self.find_node(x);
         
         match node {
             Node::Inner(inner) => unsafe {
-                let u : *const LeafNode<T> = if is_right { (*inner.jump).next } else { inner.jump };
-                
+                let u : *const LeafNode<T> = if is_left { inner.jump } else { (*inner.jump).next };
+
                 if u == &self.dummy { None } else { Some((*u).value) }
             },
             Node::Leaf(_) => Some(x)
@@ -131,34 +122,37 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
     }
 
     pub fn insert(&mut self, x : T) -> bool {
-        let (init_node, depth, is_right) = self.find_node_mut(x);
+        if self.n == 0 {
+            let ptr : *mut LeafNode<T> = &mut self.dummy;
+            self.root.as_inner().jump = ptr;
+            self.dummy.next = ptr;
+            self.dummy.prev = ptr;
+        }
+        
+        let (init_node, depth, is_left) = self.find_node_mut(x);
 
         match init_node {
             Node::Leaf(_) => false,
             Node::Inner(inner) => {
-                let pred : *mut LeafNode<T> = unsafe {
-                    if is_right { inner.jump } else { (*inner.jump).prev }
+                let pred = unsafe {
+                    if is_left { (*inner.jump).prev } else { inner.jump }
                 };
 
-                inner.jump = ptr::null_mut();
-                
                 let mut par_ptr : *mut InnerNode<T> = inner;
-                let mut node = &mut inner.child[if is_right {1} else {0}];
-                for i in depth..(Self::BITWISE - 1) {
+                let mut node = &mut inner.child[if is_left {0} else {1}];
+                for i in (depth+1)..Self::BITWISE {
                     *node = Some(Box::new(Node::Inner(InnerNode{
                         child : [None, None],
                         parent : par_ptr,
                         jump : ptr::null_mut()
                     })));
 
-                    let new_par = node.as_mut().unwrap().as_mut().as_inner();
+                    par_ptr = node.as_mut().unwrap().as_mut().as_inner();
                     
                     let c = ((x >> (Self::BITWISE - i - 1)) & T::one()).is_zero();
                     unsafe {
-                        node = &mut (*par_ptr).child[if c {1} else {0}];
+                        node = &mut (*par_ptr).child[if c {0} else {1}];
                     }
-
-                    par_ptr = new_par;
                 }
 
                 *node = Some(Box::new(Node::Leaf(LeafNode{
@@ -171,8 +165,8 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
                 let leaf = node.as_mut().unwrap().as_mut().as_leaf();
 
                 unsafe {
-                    (*pred).next = leaf;
                     (*(*pred).next).prev = leaf;
+                    (*pred).next = leaf;
                 }
 
                 while par_ptr != ptr::null_mut() {
@@ -181,7 +175,7 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
                     let r;
                     unsafe {
                         par = &mut *par_ptr;
-                    
+                        
                         l = par.child[0].is_none() && (par.jump == ptr::null_mut() || (*par.jump).value > x);
                         r = par.child[1].is_none() && (par.jump == ptr::null_mut() || (*par.jump).value < x);
                     }
@@ -198,7 +192,7 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
     }
 
     pub fn remove(&mut self, x : T) -> bool {
-        let (node, mut depth, mut is_right) = self.find_node_mut(x);
+        let (node, mut depth, mut is_left) = self.find_node_mut(x);
 
         let mut par_ptr;
         let next_leaf;
@@ -220,7 +214,7 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
 
                     depth -= 1;
                     par_ptr = (*par_ptr).parent;
-                    is_right = (*(*par_ptr).child[0].as_mut().unwrap().as_mut().as_inner().jump).value == x;
+                    is_left = (*par_ptr).child[0].is_some() && (*(*par_ptr).child[0].as_mut().unwrap().as_mut().as_inner().jump).value == x;
                 }
             }
         }
@@ -230,12 +224,27 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
 
         let del = par_ptr;
 
-        loop {
+        unsafe {
+            let node = &mut *par_ptr;
+            if node.jump == ptr::null_mut() {
+                node.jump = match node.child[if is_left {1} else {0}].as_mut().unwrap().as_mut() {
+                    Node::Inner(inner) => inner.jump,
+                    Node::Leaf(leaf) => leaf
+                };
+            }
+            par_ptr = node.parent;
+
+            if depth != 0 {
+                depth -= 1;
+            }
+        }
+
+        while par_ptr != ptr::null_mut() {
             let node = unsafe { &mut *par_ptr };
 
             if node.jump != ptr::null_mut() && unsafe {&mut *node.jump}.value == x {
                 let c = ((x >> (Self::BITWISE - depth - 1)) & T::one()).is_zero();
-                node.jump = if c { prev_leaf } else { next_leaf };
+                node.jump = if c { next_leaf } else { prev_leaf };
             }
 
             par_ptr = node.parent;
@@ -246,7 +255,7 @@ impl<T : Unsigned + PrimInt + std::fmt::Display> BinaryTrie<T> {
             depth -= 1;
         }
 
-        unsafe {&mut *del}.child[if is_right {1} else {0}] = None;
+        unsafe {&mut *del}.child[if is_left {0} else {1}] = None;
 
         self.n -= 1;
         true
@@ -265,30 +274,23 @@ mod tests {
         trie.insert(128);
         trie.insert(<u8 as Bounded>::max_value());
         trie.insert(72);
-
-        println!("1");
-
+    
         assert_eq!(trie.has(8), false);
         assert_eq!(trie.has(72), true);
 
-        println!("2");
-
         assert_eq!(trie.lower_bound(5), Some(5));
-        assert_eq!(trie.lower_bound(6), Some(128));
+        assert_eq!(trie.lower_bound(6), Some(72));
         assert_eq!(trie.lower_bound(0), Some(5));
         assert_eq!(trie.lower_bound(<u8 as Bounded>::max_value()), Some(<u8 as Bounded>::max_value()));
-
-        println!("3");
 
         assert_eq!(trie.remove(42), false);
 
         assert_eq!(trie.remove(5), true);
         assert_eq!(trie.remove(<u8 as Bounded>::max_value()), true);
 
-        println!("4");
-        
-        assert_eq!(trie.lower_bound(0), Some(6));
+        assert_eq!(trie.lower_bound(1), Some(72));
         assert_eq!(trie.lower_bound(128), Some(128));
+        
         assert_eq!(trie.lower_bound(129), None);
     }
 }
